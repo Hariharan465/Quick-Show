@@ -7,6 +7,8 @@ import { serve } from "inngest/express";
 import { inngest, functions } from "./inngest/index.js"
 import showRouter from './routes/showRoutes.js';
 import bookingRouter from './routes/bookingRoutes.js';
+import adminRouter from './routes/adminRoutes.js';
+import userRouter from './routes/userRoutes.js';
 
 
 const app = express();
@@ -26,6 +28,8 @@ app.get('/' , (req , res) => res.send('Server is Live!'))
 app.use('/api/inngest' , serve({ client: inngest, functions }))
 app.use('/api/show' , showRouter)
 app.use('/api/booking' , bookingRouter)
+app.use('/api/admin' , adminRouter)
+app.use('/api/user' , userRouter)
 
 
 app.listen(PORT , () => console.log(`Server Listening at http://localhost:${PORT}`));
