@@ -53,29 +53,38 @@ const syncUserUpdation = inngest.createFunction(
 
 //Inngest function to cancel booking and release seats of show after 10 minutes of booking created if payment is not made
 const releaseSeatsAndDeleteBookings = inngest.createFunction(
-  { id: "release-seats-and-delete-bookings" },
+  { id: "release-seats-delete-bookings" },
   { event: "app/checkpayment" },
   async ({ event, step }) => {
+    // Wait 10 minutes after event trigger
     const tenMinutesLater = new Date(Date.now() + 10 * 60 * 1000);
     await step.sleepUntil("wait-for-10-minutes", tenMinutesLater);
 
     await step.run("check-payment-status", async () => {
       const bookingId = event.data.bookingId;
-      const booking = await Booking.findById(bookingId);
+      const booking = await Booking.findById(bookingId).populate("show");
 
-      //If payment is not made , release seats and delete booking
-      if (!booking.isPaid) {
-        const show = await Show.findById(booking.show);
-        booking.bookedSeats.forEach((seat) => {
+      // If booking doesn't exist or is already paid → do nothing
+      if (!booking || booking.isPaid) return;
+
+      const show = booking.show;
+
+      // Release booked seats
+      booking.bookedSeats.forEach(seat => {
+        if (show.occupiedSeats?.[seat]) {
           delete show.occupiedSeats[seat];
-        });
-        show.markModified("occupiedSeats");
-        await Show.bulkSave();
-        await Booking.findByIdAndDelete(booking._id);
-      }
+        }
+      });
+
+      // If occupiedSeats is Mixed/Object, mark as modified
+      show.markModified?.("occupiedSeats");
+
+      await show.save(); // Save updated show seat info
+      await Booking.findByIdAndDelete(booking._id); // Remove booking
     });
   }
 );
+
 
 //Inngest function to send email when user books a show
 const sendBookingConfiramtionEmail = inngest.createFunction(
